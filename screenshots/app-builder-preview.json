@@ -1,0 +1,36 @@
+{
+  "url": "http://127.0.0.1:8080/",
+  "viewports": {
+    "desktop": {
+      "width": 1280,
+      "height": 800,
+      "status": 200,
+      "title": "Chorus",
+      "hasCanvas": false,
+      "bodyTextLen": 674,
+      "bodyTextHash": "c44a2056ca16e8d2ce71217d06ad3bacd91cc68d39e60ea4cab80f67be6ce8f0",
+      "bodyTextPrefix": "Chorus THE PUBLIC SQUARE PUBLIC COMMENTS Hear the room, not the ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview.png"
+    },
+    "mobile": {
+      "width": 390,
+      "height": 844,
+      "status": 200,
+      "title": "Chorus",
+      "hasCanvas": false,
+      "bodyTextLen": 667,
+      "bodyTextHash": "fed2b9594f5edfd5f0c203d53657c906a549f54c14b6f2af2460ef9ed1b7f587",
+      "bodyTextPrefix": "Chorus THE PUBLIC SQUARE PUBLIC COMMENTS Hear the room, not the ",
+      "horizontalOverflow": false,
+      "consoleErrors": [],
+      "pageErrors": [],
+      "screenshot": "/workspace/screenshots/app-builder-preview-mobile.png"
+    }
+  },
+  "brandWarnings": [],
+  "authWarnings": [],
+  "verdictFile": "/workspace/screenshots/app-builder-preview.json"
+}
