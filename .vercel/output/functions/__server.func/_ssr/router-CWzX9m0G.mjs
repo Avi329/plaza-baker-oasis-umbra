@@ -5,7 +5,7 @@ import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react
 import { t as TriangleAlert } from "../_libs/lucide-react.mjs";
 import { a as union, i as string, n as number, r as object, t as literal } from "../_libs/zod.mjs";
 import { t as Provider } from "../_libs/radix-ui__react-tooltip.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/router-BPWOIPai.js
+//#region node_modules/.nitro/vite/services/ssr/assets/router-CWzX9m0G.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 var __defProp = Object.defineProperty;
@@ -290,7 +290,7 @@ function TooltipProvider({ delayDuration = 400, ...props }) {
 		...props
 	});
 }
-var styles_default = "/assets/styles-CgXaba-m.css";
+var styles_default = "/assets/styles-OrvTjMSM.css";
 var APP_NAME = "Chorus";
 var Route$1 = createRootRoute({
 	head: () => ({
@@ -303,7 +303,7 @@ var Route$1 = createRootRoute({
 			{ title: APP_NAME },
 			{
 				name: "description",
-				content: "Ask any news or opinion question. Chorus gathers real reader comments from Reddit, Hacker News, and the open web."
+				content: "Ask any news or opinion question. Chorus gathers reader comments from forums and news desks — NYT, Fox, the FT, Substack, and more."
 			},
 			{
 				name: "theme-color",
@@ -357,7 +357,7 @@ var Route$1 = createRootRoute({
 		})]
 	})
 });
-var $$splitComponentImporter = () => import("./routes-sVS7harV.mjs");
+var $$splitComponentImporter = () => import("./routes-DY6ecfdI.mjs");
 var Route = createFileRoute("/")({
 	validateSearch: (search) => ({ q: typeof search.q === "string" ? search.q : void 0 }),
 	component: lazyRouteComponent($$splitComponentImporter, "component")

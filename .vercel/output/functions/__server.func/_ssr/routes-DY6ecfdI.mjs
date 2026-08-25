@@ -5,14 +5,14 @@ import { _ as useNavigate } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
 import { a as ChevronUp, c as ArrowUpRight, i as CircleDashed, l as ArrowRight, n as Minus, o as ChevronDown, r as LoaderCircle, s as Check } from "../_libs/lucide-react.mjs";
 import { t as Slot } from "../_libs/radix-ui__react-slot.mjs";
-import { n as Route } from "./router-BPWOIPai.mjs";
+import { n as Route } from "./router-CWzX9m0G.mjs";
 import { n as TSS_SERVER_FUNCTION, r as getServerFnById, t as createServerFn } from "./ssr.mjs";
-import { n as EXAMPLE_QUESTIONS, r as SOURCE_META, t as DIRECT_SOURCES } from "./types-Cfri_Pvp.mjs";
+import { n as EXAMPLE_QUESTIONS, r as SOURCE_META, t as DIRECT_SOURCES } from "./types-DmYKfL1D.mjs";
 import { n as clsx, t as cva } from "../_libs/class-variance-authority+clsx.mjs";
 import { t as twMerge } from "../_libs/tailwind-merge.mjs";
 import { t as formatDistanceToNowStrict } from "../_libs/date-fns.mjs";
 import { t as create } from "../_libs/zustand.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-sVS7harV.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-DY6ecfdI.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function cn(...inputs) {
@@ -156,7 +156,7 @@ function PulsePanel({ pulse, pending }) {
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Skeleton, { className: "mt-2 h-4 w-3/4 bg-elevated" }),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 				className: "mt-5 text-sm text-muted",
-				children: "Reading forums, news comment threads, and the open web…"
+				children: "Reading news-desk comment threads, Substack, and the open web…"
 			})
 		]
 	});
@@ -315,7 +315,7 @@ var ICONS = {
 };
 function SourceRail({ sources, counts }) {
 	return /* @__PURE__ */ (0, import_jsx_runtime.jsx)("ul", {
-		className: "grid grid-cols-2 gap-2 sm:grid-cols-5",
+		className: "grid grid-cols-2 gap-2 sm:grid-cols-3",
 		children: DIRECT_SOURCES.map((source) => {
 			const status = sources[source];
 			const Icon = ICONS[status];
@@ -395,14 +395,16 @@ var idleSources = () => ({
 	hn: "idle",
 	bluesky: "idle",
 	lemmy: "idle",
-	stack: "idle"
+	stack: "idle",
+	news: "idle"
 });
 var pendingSources = () => ({
 	reddit: "pending",
 	hn: "pending",
 	bluesky: "pending",
 	lemmy: "pending",
-	stack: "pending"
+	stack: "pending",
+	news: "pending"
 });
 var generation = 0;
 var useChorus = create((set, get) => ({
@@ -448,7 +450,8 @@ var useChorus = create((set, get) => ({
 			recent
 		});
 		const collected = [];
-		await Promise.all(DIRECT_SOURCES.map(async (source) => {
+		const forumSources = DIRECT_SOURCES.filter((source) => source !== "news");
+		const loadSource = async (source) => {
 			try {
 				const payload = await fetchChorusSource({ data: {
 					query,
@@ -481,10 +484,12 @@ var useChorus = create((set, get) => ({
 					}
 				}));
 			}
-		}));
+		};
+		await Promise.all(forumSources.map(loadSource));
 		if (mine !== generation) return;
-		const snapshot = collected.length ? collected : get().comments;
+		const snapshot = collected.length ? [...collected] : get().comments;
 		set({ pulsePending: true });
+		const newsTask = loadSource("news");
 		try {
 			const pulse = await composeChorusPulse({ data: {
 				query,
@@ -512,6 +517,8 @@ var useChorus = create((set, get) => ({
 				}
 			});
 		}
+		await newsTask;
+		if (mine !== generation) return;
 	}
 }));
 function mergeComments(existing, incoming) {
@@ -542,7 +549,8 @@ function Results({ onSearch }) {
 			hn: 0,
 			bluesky: 0,
 			lemmy: 0,
-			stack: 0
+			stack: 0,
+			news: 0
 		};
 		for (const comment of comments) if (comment.source in map) map[comment.source] += 1;
 		return map;
@@ -666,7 +674,7 @@ function IdleHome({ onSearch, recent }) {
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 				className: "mt-5 max-w-lg text-base leading-relaxed text-pretty text-muted",
-				children: "Ask any news or opinion question. Chorus gathers what readers are actually writing on Reddit, Hacker News, Bluesky, Lemmy, Stack Exchange, Quora, and news-site comment threads. Mood on X is folded into the pulse — posts are never reprinted."
+				children: "Ask any news or opinion question. Chorus gathers what readers are actually writing on Reddit, Hacker News, Bluesky, Lemmy, Stack Exchange, and news-desk comment threads — NYT, Fox, the FT, Washington Post, WSJ, The Hill, Breitbart, UnHerd, Substack, and others. Mood on X is folded into the pulse — posts are never reprinted."
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 				className: "mt-8",

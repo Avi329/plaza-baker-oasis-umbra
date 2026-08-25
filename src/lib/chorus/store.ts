@@ -18,6 +18,7 @@ const idleSources = (): StatusMap => ({
   bluesky: "idle",
   lemmy: "idle",
   stack: "idle",
+  news: "idle",
 });
 
 const pendingSources = (): StatusMap => ({
@@ -26,6 +27,7 @@ const pendingSources = (): StatusMap => ({
   bluesky: "pending",
   lemmy: "pending",
   stack: "pending",
+  news: "pending",
 });
 
 type ChorusState = {
@@ -88,37 +90,39 @@ export const useChorus = create<ChorusState>((set, get) => ({
     });
 
     const collected: ChorusComment[] = [];
-    await Promise.all(
-      DIRECT_SOURCES.map(async (source) => {
-        try {
-          const payload = await fetchChorusSource({ data: { query, source } });
-          if (mine !== generation) return;
-          collected.push(...payload.comments);
-          set((state) => ({
-            comments: mergeComments(state.comments, payload.comments),
-            sources: {
-              ...state.sources,
-              [source]: payload.comments.length ? "ok" : payload.error ? "error" : "empty",
-            },
-            sourceErrors: payload.error
-              ? { ...state.sourceErrors, [source]: payload.error }
-              : state.sourceErrors,
-          }));
-        } catch (err) {
-          if (mine !== generation) return;
-          const message = err instanceof Error ? err.message : "Failed";
-          set((state) => ({
-            sources: { ...state.sources, [source]: "error" },
-            sourceErrors: { ...state.sourceErrors, [source]: message },
-          }));
-        }
-      }),
-    );
+    const forumSources = DIRECT_SOURCES.filter((source) => source !== "news");
 
+    const loadSource = async (source: DirectSource) => {
+      try {
+        const payload = await fetchChorusSource({ data: { query, source } });
+        if (mine !== generation) return;
+        collected.push(...payload.comments);
+        set((state) => ({
+          comments: mergeComments(state.comments, payload.comments),
+          sources: {
+            ...state.sources,
+            [source]: payload.comments.length ? "ok" : payload.error ? "error" : "empty",
+          },
+          sourceErrors: payload.error
+            ? { ...state.sourceErrors, [source]: payload.error }
+            : state.sourceErrors,
+        }));
+      } catch (err) {
+        if (mine !== generation) return;
+        const message = err instanceof Error ? err.message : "Failed";
+        set((state) => ({
+          sources: { ...state.sources, [source]: "error" },
+          sourceErrors: { ...state.sourceErrors, [source]: message },
+        }));
+      }
+    };
+
+    await Promise.all(forumSources.map(loadSource));
     if (mine !== generation) return;
 
-    const snapshot = collected.length ? collected : get().comments;
+    const snapshot = collected.length ? [...collected] : get().comments;
     set({ pulsePending: true });
+    const newsTask = loadSource("news");
     try {
       const pulse = await composeChorusPulse({ data: { query, comments: snapshot } });
       if (mine !== generation) return;
@@ -147,6 +151,8 @@ export const useChorus = create<ChorusState>((set, get) => ({
         },
       });
     }
+    await newsTask;
+    if (mine !== generation) return;
   },
 }));
 

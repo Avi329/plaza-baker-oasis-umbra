@@ -1,10 +1,11 @@
-//#region node_modules/.nitro/vite/services/ssr/assets/types-Cfri_Pvp.js
+//#region node_modules/.nitro/vite/services/ssr/assets/types-DmYKfL1D.js
 var DIRECT_SOURCES = [
 	"reddit",
 	"hn",
 	"bluesky",
 	"lemmy",
-	"stack"
+	"stack",
+	"news"
 ];
 var SOURCE_META = {
 	reddit: {

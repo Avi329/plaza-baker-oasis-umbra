@@ -19,7 +19,7 @@ export function SourceRail({
   counts: Record<DirectSource, number>;
 }) {
   return (
-    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+    <ul className="grid grid-cols-2 gap-2 sm:grid-cols-3">
       {DIRECT_SOURCES.map((source) => {
         const status = sources[source];
         const Icon = ICONS[status];

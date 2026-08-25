@@ -26,10 +26,14 @@ export function Results({ onSearch }: { onSearch: (query: string) => void }) {
   }, [comments]);
 
   const directCounts = useMemo(() => {
-    const map = { reddit: 0, hn: 0, bluesky: 0, lemmy: 0, stack: 0 } satisfies Record<
-      DirectSource,
-      number
-    >;
+    const map = {
+      reddit: 0,
+      hn: 0,
+      bluesky: 0,
+      lemmy: 0,
+      stack: 0,
+      news: 0,
+    } satisfies Record<DirectSource, number>;
     for (const comment of comments) {
       if (comment.source in map) {
         map[comment.source as DirectSource] += 1;
@@ -179,8 +183,9 @@ export function IdleHome({
       </h1>
       <p className="mt-5 max-w-lg text-base leading-relaxed text-pretty text-muted">
         Ask any news or opinion question. Chorus gathers what readers are actually writing on
-        Reddit, Hacker News, Bluesky, Lemmy, Stack Exchange, Quora, and news-site comment
-        threads. Mood on X is folded into the pulse — posts are never reprinted.
+        Reddit, Hacker News, Bluesky, Lemmy, Stack Exchange, and news-desk comment threads —
+        NYT, Fox, the FT, Washington Post, WSJ, The Hill, Breitbart, UnHerd, Substack, and
+        others. Mood on X is folded into the pulse — posts are never reprinted.
       </p>
       <div className="mt-8">
         <SearchForm onSubmit={onSearch} />

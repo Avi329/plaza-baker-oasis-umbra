@@ -1,5 +1,5 @@
 import { a as searchTerms, n as commentKey, r as isLowQuality, t as cleanText } from "./text-Kg3cA_n2.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/sources.server-CrBRTUQj.js
+//#region node_modules/.nitro/vite/services/ssr/assets/sources.server-CxEt8t4w.js
 var TIMEOUT_MS = 1e4;
 var USER_AGENT = "Mozilla/5.0 (compatible; Chorus/1.0; comment-aggregator; +https://grok.com)";
 async function fetchJson(url, init, timeout = TIMEOUT_MS) {
@@ -219,13 +219,16 @@ var FETCHERS = {
 	stack: fetchStack
 };
 async function fetchSource(source, query) {
-	const terms = searchTerms(query);
 	try {
-		const comments = (await FETCHERS[source](terms)).map(pack);
+		let comments;
+		if (source === "news") {
+			const { fetchNewsComments } = await import("./news.server-lCt9Yb-y.mjs");
+			comments = (await fetchNewsComments(query)).map(pack);
+		} else comments = (await FETCHERS[source](searchTerms(query))).map(pack);
 		return {
 			source,
 			comments,
-			error: comments.length ? void 0 : "No matching comments"
+			...comments.length ? {} : { error: "No matching comments" }
 		};
 	} catch (err) {
 		return {

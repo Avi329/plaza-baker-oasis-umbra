@@ -4,6 +4,7 @@ export const DIRECT_SOURCES = [
   "bluesky",
   "lemmy",
   "stack",
+  "news",
 ] as const;
 
 export type DirectSource = (typeof DIRECT_SOURCES)[number];
@@ -12,7 +13,6 @@ export type CommentSource =
   | DirectSource
   | "x"
   | "quora"
-  | "news"
   | "youtube"
   | "facebook"
   | "web";

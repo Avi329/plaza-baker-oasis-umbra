@@ -1,9 +1,11 @@
 import type { ChorusComment, ChorusPulse, CommentSource, PulseCamp } from "./types";
 import { cleanText, isLowQuality, isXOrigin } from "./text";
+import { NEWS_OUTLET_NAMES, isNewsOutletName, outletFromUrl } from "./outlets";
+import { extractJson, grokComplete } from "./grok.server";
 
 const PULSE_SCHEMA_HINT = `{
   "headline": "one sentence on the overall mood of regular people",
-  "body": "2-3 short paragraphs. Report what commenters are saying, naming platforms. Do not invent unanimity.",
+  "body": "2-3 short paragraphs. Report what commenters are saying, naming platforms and news desks. Do not invent unanimity.",
   "camps": [
     { "label": "short camp name", "share": 42, "summary": "what this group argues" }
   ],
@@ -12,48 +14,18 @@ const PULSE_SCHEMA_HINT = `{
       "text": "verbatim or faithful excerpt of a real comment",
       "author": "username or Anonymous",
       "source": "reddit|hn|bluesky|quora|news|youtube|facebook|web|lemmy|stack",
+      "community": "outlet or community name (e.g. Fox News, NYT, Substack)",
       "url": "https://...",
-      "community": "optional community or site name",
       "score": 0
     }
   ]
 }`;
 
-type GrokJson = {
-  headline?: unknown;
-  body?: unknown;
-  camps?: unknown;
-  quotes?: unknown;
-};
-
-function extractJson(text: string): GrokJson | null {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
-  const raw = fenced?.[1] ?? text;
-  const start = raw.indexOf("{");
-  const end = raw.lastIndexOf("}");
-  if (start < 0 || end <= start) return null;
-  try {
-    return JSON.parse(raw.slice(start, end + 1)) as GrokJson;
-  } catch {
-    return null;
+function coerceSource(value: unknown, url?: string): CommentSource {
+  if (url) {
+    if (isXOrigin("web", url)) return "x";
+    if (outletFromUrl(url)) return "news";
   }
-}
-
-const SOURCE_VALUES: CommentSource[] = [
-  "reddit",
-  "hn",
-  "bluesky",
-  "lemmy",
-  "stack",
-  "x",
-  "quora",
-  "news",
-  "youtube",
-  "facebook",
-  "web",
-];
-
-function coerceSource(value: unknown): CommentSource {
   const s = String(value ?? "web").toLowerCase();
   if (s.includes("reddit")) return "reddit";
   if (s.includes("hack") || s === "hn" || s.includes("ycombinator")) return "hn";
@@ -64,10 +36,14 @@ function coerceSource(value: unknown): CommentSource {
   if (s.includes("quora")) return "quora";
   if (s.includes("youtu")) return "youtube";
   if (s.includes("facebook") || s === "fb") return "facebook";
-  if (s.includes("news") || s.includes("disqus") || s.includes("guardian") || s.includes("nyt")) {
+  if (
+    s.includes("news") ||
+    s.includes("disqus") ||
+    s.includes("substack") ||
+    isNewsOutletName(s)
+  ) {
     return "news";
   }
-  if ((SOURCE_VALUES as string[]).includes(s)) return s as CommentSource;
   return "web";
 }
 
@@ -101,20 +77,24 @@ function parseQuotes(raw: unknown): ChorusComment[] {
     if (isLowQuality(text, author)) continue;
     const url = String(row.url ?? "").trim();
     if (url && !/^https?:\/\//i.test(url)) continue;
-    const source = coerceSource(row.source);
+    const source = coerceSource(row.source, url);
     if (isXOrigin(source, url)) continue;
+    const community =
+      (url ? outletFromUrl(url) : undefined) ||
+      (row.community ? String(row.community).slice(0, 80) : undefined) ||
+      (row.outlet ? String(row.outlet).slice(0, 80) : undefined);
     quotes.push({
       id: `web:${index}:${text.slice(0, 24)}`,
       source,
       author: author.slice(0, 48),
       text,
-      community: row.community ? String(row.community).slice(0, 80) : undefined,
+      community,
       url: url || "https://www.google.com/search?q=" + encodeURIComponent(text.slice(0, 80)),
       score: Number(row.score ?? 0) || 0,
       createdAt: 0,
     });
   }
-  return quotes.slice(0, 10);
+  return quotes.slice(0, 16);
 }
 
 function scrubXCopy(text: string): string {
@@ -129,74 +109,12 @@ function scrubXCopy(text: string): string {
 function digestComments(comments: ChorusComment[]): string {
   const top = [...comments]
     .sort((a, b) => b.score - a.score)
-    .slice(0, 20)
+    .slice(0, 24)
     .map((c, i) => {
       const where = [c.source, c.community, c.author].filter(Boolean).join(" / ");
-      return `${i + 1}. [${where}] ${c.text.slice(0, 280)}${c.url ? ` (${c.url})` : ""}`;
+      return `${i + 1}. [${where}] ${c.text.slice(0, 240)}${c.url ? ` (${c.url})` : ""}`;
     });
   return top.join("\n");
-}
-
-type ResponsePayload = {
-  status?: string;
-  output?: Array<{
-    type?: string;
-    content?: Array<{
-      type?: string;
-      text?: string;
-      annotations?: Array<{ url?: string; title?: string; type?: string }>;
-    }>;
-  }>;
-  error?: { message?: string };
-};
-
-function outputText(payload: ResponsePayload): string {
-  const chunks: string[] = [];
-  for (const item of payload.output ?? []) {
-    if (item.type !== "message") continue;
-    for (const block of item.content ?? []) {
-      if (block.text) chunks.push(block.text);
-    }
-  }
-  return chunks.join("\n").trim();
-}
-
-async function grokPulse(prompt: string): Promise<string> {
-  const apiKey = process.env.XAI_API_KEY;
-  if (!apiKey) throw new Error("AI is not available in this environment");
-
-  const res = await fetch("https://api.x.ai/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "grok-4.5",
-      store: false,
-      max_output_tokens: 1800,
-      reasoning: { effort: "low" },
-      tools: [{ type: "web_search" }, { type: "x_search" }],
-      input: [
-        {
-          role: "system",
-          content:
-            "You are Chorus, a reporter of public comments — not of headlines. Prefer ordinary readers. Never invent comments, usernames, or URLs. Never copy or quote posts from X (Twitter) verbatim — paraphrase the mood on X in the briefing only. Do not include X/Twitter URLs or tweet text in quotes. If you cannot verify a quote, omit it. Return JSON only.",
-        },
-        { role: "user", content: prompt },
-      ],
-    }),
-    signal: AbortSignal.timeout(90_000),
-  });
-
-  if (!res.ok) {
-    const detail = await res.text().catch(() => "");
-    throw new Error(`xAI API error ${res.status}${detail ? `: ${detail.slice(0, 180)}` : ""}`);
-  }
-  const payload = (await res.json()) as ResponsePayload;
-  const text = outputText(payload);
-  if (!text) throw new Error("Empty model response");
-  return text;
 }
 
 export async function composePulse(
@@ -204,26 +122,37 @@ export async function composePulse(
   comments: ChorusComment[],
 ): Promise<ChorusPulse> {
   const digest = digestComments(comments);
+  const desks = NEWS_OUTLET_NAMES.join(", ");
   const prompt = `Question from a reader: ${query}
 
-Below are real comments already gathered from public forums (Hacker News, Lemmy, Stack Exchange, Reddit, Bluesky when available):
+Below are real comments already gathered from public forums and news desks:
 ${digest || "(none yet — rely entirely on live search)"}
 
-Now search the open web for additional *reader comments* on this subject: Reddit threads, Hacker News, Quora answers, news-site comment sections (Disqus, The Guardian, NYT, YouTube comments), public Facebook posts if they surface, Bluesky, Lemmy. You may also search X to understand the mood — but never copy, quote, or reprint tweet text, handles, or X URLs.
+Search the open web for additional *reader comments* — especially comment threads on:
+${desks}
+
+Also: Quora, YouTube comments, Disqus / OpenWeb / Coral / Viafoura widgets, The Guardian, Substack notes. You may search X for mood only — never copy tweet text.
 
 Return ONLY JSON matching this shape:
 ${PULSE_SCHEMA_HINT}
 
 Rules:
 - camps share numbers should sum to about 100. 2-4 camps.
-- 5-8 quotes from forums and comment threads, preferring sources NOT already listed above, with real URLs you actually found.
-- Never put X or Twitter posts in "quotes". No tweet text, no x.com / twitter.com / t.co links.
-- In "body", you may summarize what people on X are arguing in your own words — no quotation marks around tweets.
+- 8-14 quotes, preferring news-desk comments NOT already listed above, with real URLs.
+- Mix outlets. Put the desk name in "community". source should be "news" for those.
+- Never put X or Twitter posts in "quotes".
 - body should read like a briefing on the commentariat, 120-220 words.
 - If the evidence is thin, say so.`;
 
   try {
-    const text = await grokPulse(prompt);
+    const text = await grokComplete({
+      system:
+        "You are Chorus, a reporter of public comments — not of headlines. Prefer ordinary readers on news sites and forums. Never invent comments, usernames, or URLs. Never copy posts from X (Twitter) verbatim. Return JSON only.",
+      prompt,
+      tools: [{ type: "web_search" }, { type: "x_search" }],
+      maxOutputTokens: 2000,
+      timeoutMs: 90_000,
+    });
     const parsed = extractJson(text);
     if (!parsed) {
       return {

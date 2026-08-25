@@ -325,7 +325,7 @@ async function fetchStack(query: string): Promise<ChorusComment[]> {
   return unique;
 }
 
-const FETCHERS: Record<DirectSource, (q: string) => Promise<ChorusComment[]>> = {
+const FETCHERS: Record<Exclude<DirectSource, "news">, (q: string) => Promise<ChorusComment[]>> = {
   reddit: fetchReddit,
   hn: fetchHn,
   bluesky: fetchBluesky,
@@ -334,13 +334,18 @@ const FETCHERS: Record<DirectSource, (q: string) => Promise<ChorusComment[]>> = 
 };
 
 export async function fetchSource(source: DirectSource, query: string): Promise<SourcePayload> {
-  const terms = searchTerms(query);
   try {
-    const comments = (await FETCHERS[source](terms)).map(pack);
+    let comments: ChorusComment[];
+    if (source === "news") {
+      const { fetchNewsComments } = await import("./news.server");
+      comments = (await fetchNewsComments(query)).map(pack);
+    } else {
+      comments = (await FETCHERS[source](searchTerms(query))).map(pack);
+    }
     return {
       source,
       comments,
-      error: comments.length ? undefined : "No matching comments",
+      ...(comments.length ? {} : { error: "No matching comments" }),
     };
   } catch (err) {
     const message = err instanceof Error ? err.message : "Request failed";
