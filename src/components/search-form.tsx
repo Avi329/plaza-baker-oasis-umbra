@@ -40,7 +40,7 @@ export function SearchForm({ initial = "", busy, compact, onSubmit }: SearchForm
           id="chorus-q"
           value={value}
           onChange={(event) => setValue(event.target.value)}
-          placeholder="What is the internet saying about…"
+          placeholder="Ask in your own words…"
           autoComplete="off"
           enterKeyHint="search"
           className={cn(

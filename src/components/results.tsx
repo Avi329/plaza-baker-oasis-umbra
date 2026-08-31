@@ -13,7 +13,7 @@ type Filter = "all" | CommentSource;
 type Sort = "top" | "new";
 
 export function Results({ onSearch }: { onSearch: (query: string) => void }) {
-  const { query, comments, sources, pulse, pulsePending, phase } = useChorus();
+  const { query, comments, sources, pulse, pulsePending, phase, intent } = useChorus();
   const [filter, setFilter] = useState<Filter>("all");
   const [sort, setSort] = useState<Sort>("top");
 
@@ -61,6 +61,14 @@ export function Results({ onSearch }: { onSearch: (query: string) => void }) {
     <div className="mx-auto w-full max-w-3xl px-4 pb-20 pt-6 sm:px-6">
       <SearchForm initial={query} busy={phase === "listening"} compact onSubmit={onSearch} />
 
+      {intent?.related?.length ? (
+        <p className="mt-3 text-xs leading-relaxed text-muted">
+          Also listening for {intent.related.slice(0, 6).join(" · ")}
+        </p>
+      ) : intent?.topic ? (
+        <p className="mt-3 text-xs leading-relaxed text-muted">{intent.topic}</p>
+      ) : null}
+
       <div className="mt-6">
         <SourceRail sources={sources} counts={directCounts} />
       </div>
@@ -77,8 +85,8 @@ export function Results({ onSearch }: { onSearch: (query: string) => void }) {
               {comments.length
                 ? `${comments.length} voices gathered from public threads`
                 : phase === "listening"
-                  ? "Waiting on the first replies…"
-                  : "Nothing surfaced this time. Try a more specific question."}
+                  ? "Matching Disqus, OpenWeb, and related comments on this subject…"
+                  : "Nothing surfaced this time. Try another angle."}
             </p>
           </div>
           <div className="flex gap-1 self-start rounded-md bg-surface p-1 shadow-[var(--shadow-border)]">
@@ -182,10 +190,11 @@ export function IdleHome({
         Hear the room, not the headline.
       </h1>
       <p className="mt-5 max-w-lg text-base leading-relaxed text-pretty text-muted">
-        Ask any news or opinion question. Chorus gathers what readers are actually writing on
-        Reddit, Hacker News, Bluesky, Lemmy, Stack Exchange, and news-desk comment threads —
-        NYT, Fox, the FT, Washington Post, WSJ, The Hill, Breitbart, UnHerd, Substack, and
-        others. Mood on X is folded into the pulse — posts are never reprinted.
+        Ask anything. Chorus reads the intent and picks reader comments on that subject from
+        Disqus, OpenWeb, Viafoura, Coral, Substack, YouTube, and native comment threads — not
+        only news-desk pages — plus Reddit, Hacker News, Bluesky, Lemmy, and Stack Exchange.
+        Conservative and right-leaning commenters get more of the floor. Mood on X is folded
+        into the pulse — posts are never reprinted.
       </p>
       <div className="mt-8">
         <SearchForm onSubmit={onSearch} />

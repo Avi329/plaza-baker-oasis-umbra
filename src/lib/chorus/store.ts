@@ -1,5 +1,5 @@
 import { create } from "zustand";
-import { composeChorusPulse, fetchChorusSource } from "./search";
+import { composeChorusPulse, expandChorusQuery, fetchChorusSource } from "./search";
 import { pushHistory, readHistory } from "./history";
 import { isXOrigin } from "./text";
 import {
@@ -7,6 +7,7 @@ import {
   type ChorusComment,
   type ChorusPulse,
   type DirectSource,
+  type QueryIntent,
   type SourceStatus,
 } from "./types";
 
@@ -40,6 +41,7 @@ type ChorusState = {
   pulsePending: boolean;
   error: string | null;
   recent: string[];
+  intent: QueryIntent | null;
   listen: (query: string) => Promise<void>;
   reset: () => void;
 };
@@ -56,6 +58,7 @@ export const useChorus = create<ChorusState>((set, get) => ({
   pulsePending: false,
   error: null,
   recent: [],
+  intent: null,
   reset: () => {
     generation += 1;
     set({
@@ -67,6 +70,7 @@ export const useChorus = create<ChorusState>((set, get) => ({
       pulse: null,
       pulsePending: false,
       error: null,
+      intent: null,
     });
   },
   listen: async (raw) => {
@@ -87,14 +91,24 @@ export const useChorus = create<ChorusState>((set, get) => ({
       pulsePending: false,
       error: null,
       recent,
+      intent: null,
     });
+
+    let intent: QueryIntent | undefined;
+    try {
+      intent = await expandChorusQuery({ data: { query } });
+    } catch {
+      intent = undefined;
+    }
+    if (mine !== generation) return;
+    if (intent) set({ intent });
 
     const collected: ChorusComment[] = [];
     const forumSources = DIRECT_SOURCES.filter((source) => source !== "news");
 
     const loadSource = async (source: DirectSource) => {
       try {
-        const payload = await fetchChorusSource({ data: { query, source } });
+        const payload = await fetchChorusSource({ data: { query, source, intent } });
         if (mine !== generation) return;
         collected.push(...payload.comments);
         set((state) => ({
@@ -117,14 +131,14 @@ export const useChorus = create<ChorusState>((set, get) => ({
       }
     };
 
-    await Promise.all(forumSources.map(loadSource));
+    const newsTask = loadSource("news");
+    await Promise.all([...forumSources.map(loadSource), newsTask]);
     if (mine !== generation) return;
 
-    const snapshot = collected.length ? [...collected] : get().comments;
+    const snapshot = get().comments.length ? [...get().comments] : collected;
     set({ pulsePending: true });
-    const newsTask = loadSource("news");
     try {
-      const pulse = await composeChorusPulse({ data: { query, comments: snapshot } });
+      const pulse = await composeChorusPulse({ data: { query, comments: snapshot, intent } });
       if (mine !== generation) return;
       set((state) => ({
         pulse,
@@ -151,8 +165,6 @@ export const useChorus = create<ChorusState>((set, get) => ({
         },
       });
     }
-    await newsTask;
-    if (mine !== generation) return;
   },
 }));
 

@@ -15,7 +15,7 @@ export const Route = createRootRoute({
       {
         name: "description",
         content:
-          "Ask any news or opinion question. Chorus gathers reader comments from forums and news desks — NYT, Fox, the FT, Substack, and more.",
+          "Ask any subject. Chorus picks reader comments from Disqus, OpenWeb, and the rest of the public square.",
       },
       { name: "theme-color", content: "#0e0f0c" },
     ],

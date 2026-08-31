@@ -1,18 +1,18 @@
 import { i as __toESM } from "../_runtime.mjs";
-import { i as isXOrigin } from "./text-Kg3cA_n2.mjs";
+import { i as isXOrigin } from "./text-DnnNcfza.mjs";
 import { n as require_react } from "../_libs/@radix-ui/react-compose-refs+[...].mjs";
 import { _ as useNavigate } from "../_libs/@tanstack/react-router+[...].mjs";
 import { n as require_jsx_runtime } from "../_libs/radix-ui__react-context+react.mjs";
 import { a as ChevronUp, c as ArrowUpRight, i as CircleDashed, l as ArrowRight, n as Minus, o as ChevronDown, r as LoaderCircle, s as Check } from "../_libs/lucide-react.mjs";
 import { t as Slot } from "../_libs/radix-ui__react-slot.mjs";
-import { n as Route } from "./router-CWzX9m0G.mjs";
+import { n as Route } from "./router-BKSeS2vO.mjs";
 import { n as TSS_SERVER_FUNCTION, r as getServerFnById, t as createServerFn } from "./ssr.mjs";
-import { n as EXAMPLE_QUESTIONS, r as SOURCE_META, t as DIRECT_SOURCES } from "./types-DmYKfL1D.mjs";
+import { n as EXAMPLE_QUESTIONS, r as SOURCE_META, t as DIRECT_SOURCES } from "./types-DFkWyPLH.mjs";
 import { n as clsx, t as cva } from "../_libs/class-variance-authority+clsx.mjs";
 import { t as twMerge } from "../_libs/tailwind-merge.mjs";
 import { t as formatDistanceToNowStrict } from "../_libs/date-fns.mjs";
 import { t as create } from "../_libs/zustand.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/routes-DY6ecfdI.js
+//#region node_modules/.nitro/vite/services/ssr/assets/routes-y-2oJT5n.js
 var import_react = /* @__PURE__ */ __toESM(require_react());
 var import_jsx_runtime = require_jsx_runtime();
 function cn(...inputs) {
@@ -156,7 +156,7 @@ function PulsePanel({ pulse, pending }) {
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)(Skeleton, { className: "mt-2 h-4 w-3/4 bg-elevated" }),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 				className: "mt-5 text-sm text-muted",
-				children: "Reading news-desk comment threads, Substack, and the open web…"
+				children: "Reading Disqus, OpenWeb, and other comment threads on this subject…"
 			})
 		]
 	});
@@ -277,7 +277,7 @@ function SearchForm({ initial = "", busy, compact, onSubmit }) {
 					id: "chorus-q",
 					value,
 					onChange: (event) => setValue(event.target.value),
-					placeholder: "What is the internet saying about…",
+					placeholder: "Ask in your own words…",
 					autoComplete: "off",
 					enterKeyHint: "search",
 					className: cn("min-h-11 min-w-0 flex-1 bg-transparent px-3.5 text-base text-fg outline-none", "placeholder:text-subtle")
@@ -351,6 +351,39 @@ var createSsrRpc = (functionId) => {
 function normalizeQuery(raw) {
 	return String(raw ?? "").replace(/\s+/g, " ").trim().slice(0, 280);
 }
+function sanitizeIntent(raw) {
+	if (!raw || typeof raw !== "object") return void 0;
+	const row = raw;
+	const topic = String(row.topic ?? "").replace(/\s+/g, " ").trim().slice(0, 240);
+	const clean = (value, maxItems, maxLen) => {
+		if (!Array.isArray(value)) return [];
+		const out = [];
+		const seen = /* @__PURE__ */ new Set();
+		for (const item of value) {
+			const text = String(item ?? "").replace(/\s+/g, " ").trim().slice(0, maxLen);
+			if (text.length < 3) continue;
+			const key = text.toLowerCase();
+			if (seen.has(key)) continue;
+			seen.add(key);
+			out.push(text);
+			if (out.length >= maxItems) break;
+		}
+		return out;
+	};
+	const searches = clean(row.searches, 4, 80);
+	const related = clean(row.related, 8, 48);
+	if (!topic && !searches.length && !related.length) return void 0;
+	return {
+		topic,
+		searches,
+		related
+	};
+}
+var expandChorusQuery = createServerFn({ method: "POST" }).validator((input) => {
+	const query = normalizeQuery(input?.query);
+	if (query.length < 3) throw new Error("Ask a slightly longer question.");
+	return { query };
+}).handler(createSsrRpc("a5b154c01fd71b911b01d52ace7faad853f4e5ed771afcd02b83349318c284d3"));
 var fetchChorusSource = createServerFn({ method: "POST" }).validator((input) => {
 	const query = normalizeQuery(input?.query);
 	const source = input?.source;
@@ -358,7 +391,8 @@ var fetchChorusSource = createServerFn({ method: "POST" }).validator((input) => 
 	if (!DIRECT_SOURCES.includes(source)) throw new Error("Unknown source.");
 	return {
 		query,
-		source
+		source,
+		intent: sanitizeIntent(input?.intent)
 	};
 }).handler(createSsrRpc("48aa2c8a628103f79c09994c52094d826de08f12c030c48f41c332a6aa3d6ce7"));
 var composeChorusPulse = createServerFn({ method: "POST" }).validator((input) => {
@@ -366,7 +400,8 @@ var composeChorusPulse = createServerFn({ method: "POST" }).validator((input) =>
 	if (query.length < 3) throw new Error("Ask a slightly longer question.");
 	return {
 		query,
-		comments: (Array.isArray(input?.comments) ? input.comments : []).slice(0, 36)
+		comments: (Array.isArray(input?.comments) ? input.comments : []).slice(0, 60),
+		intent: sanitizeIntent(input?.intent)
 	};
 }).handler(createSsrRpc("8c423ae0f6bf1894d035aa64dd04bb435fc9d193d3f27e6dba995ce1d7be678f"));
 var KEY = "chorus.recent-questions";
@@ -417,6 +452,7 @@ var useChorus = create((set, get) => ({
 	pulsePending: false,
 	error: null,
 	recent: [],
+	intent: null,
 	reset: () => {
 		generation += 1;
 		set({
@@ -427,7 +463,8 @@ var useChorus = create((set, get) => ({
 			sourceErrors: {},
 			pulse: null,
 			pulsePending: false,
-			error: null
+			error: null,
+			intent: null
 		});
 	},
 	listen: async (raw) => {
@@ -447,15 +484,25 @@ var useChorus = create((set, get) => ({
 			pulse: null,
 			pulsePending: false,
 			error: null,
-			recent
+			recent,
+			intent: null
 		});
+		let intent;
+		try {
+			intent = await expandChorusQuery({ data: { query } });
+		} catch {
+			intent = void 0;
+		}
+		if (mine !== generation) return;
+		if (intent) set({ intent });
 		const collected = [];
 		const forumSources = DIRECT_SOURCES.filter((source) => source !== "news");
 		const loadSource = async (source) => {
 			try {
 				const payload = await fetchChorusSource({ data: {
 					query,
-					source
+					source,
+					intent
 				} });
 				if (mine !== generation) return;
 				collected.push(...payload.comments);
@@ -485,15 +532,16 @@ var useChorus = create((set, get) => ({
 				}));
 			}
 		};
-		await Promise.all(forumSources.map(loadSource));
-		if (mine !== generation) return;
-		const snapshot = collected.length ? [...collected] : get().comments;
-		set({ pulsePending: true });
 		const newsTask = loadSource("news");
+		await Promise.all([...forumSources.map(loadSource), newsTask]);
+		if (mine !== generation) return;
+		const snapshot = get().comments.length ? [...get().comments] : collected;
+		set({ pulsePending: true });
 		try {
 			const pulse = await composeChorusPulse({ data: {
 				query,
-				comments: snapshot
+				comments: snapshot,
+				intent
 			} });
 			if (mine !== generation) return;
 			set((state) => ({
@@ -517,8 +565,6 @@ var useChorus = create((set, get) => ({
 				}
 			});
 		}
-		await newsTask;
-		if (mine !== generation) return;
 	}
 }));
 function mergeComments(existing, incoming) {
@@ -535,7 +581,7 @@ function hydrateRecent() {
 	useChorus.setState({ recent: readHistory() });
 }
 function Results({ onSearch }) {
-	const { query, comments, sources, pulse, pulsePending, phase } = useChorus();
+	const { query, comments, sources, pulse, pulsePending, phase, intent } = useChorus();
 	const [filter, setFilter] = (0, import_react.useState)("all");
 	const [sort, setSort] = (0, import_react.useState)("top");
 	const counts = (0, import_react.useMemo)(() => {
@@ -576,6 +622,13 @@ function Results({ onSearch }) {
 				compact: true,
 				onSubmit: onSearch
 			}),
+			intent?.related?.length ? /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("p", {
+				className: "mt-3 text-xs leading-relaxed text-muted",
+				children: ["Also listening for ", intent.related.slice(0, 6).join(" · ")]
+			}) : intent?.topic ? /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
+				className: "mt-3 text-xs leading-relaxed text-muted",
+				children: intent.topic
+			}) : null,
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 				className: "mt-6",
 				children: /* @__PURE__ */ (0, import_jsx_runtime.jsx)(SourceRail, {
@@ -600,7 +653,7 @@ function Results({ onSearch }) {
 							children: "The comments"
 						}), /* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 							className: "mt-1 text-sm text-muted",
-							children: comments.length ? `${comments.length} voices gathered from public threads` : phase === "listening" ? "Waiting on the first replies…" : "Nothing surfaced this time. Try a more specific question."
+							children: comments.length ? `${comments.length} voices gathered from public threads` : phase === "listening" ? "Matching Disqus, OpenWeb, and related comments on this subject…" : "Nothing surfaced this time. Try another angle."
 						})] }), /* @__PURE__ */ (0, import_jsx_runtime.jsxs)("div", {
 							className: "flex gap-1 self-start rounded-md bg-surface p-1 shadow-[var(--shadow-border)]",
 							children: [/* @__PURE__ */ (0, import_jsx_runtime.jsx)(SortChip, {
@@ -674,7 +727,7 @@ function IdleHome({ onSearch, recent }) {
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("p", {
 				className: "mt-5 max-w-lg text-base leading-relaxed text-pretty text-muted",
-				children: "Ask any news or opinion question. Chorus gathers what readers are actually writing on Reddit, Hacker News, Bluesky, Lemmy, Stack Exchange, and news-desk comment threads — NYT, Fox, the FT, Washington Post, WSJ, The Hill, Breitbart, UnHerd, Substack, and others. Mood on X is folded into the pulse — posts are never reprinted."
+				children: "Ask anything. Chorus reads the intent and picks reader comments on that subject from Disqus, OpenWeb, Viafoura, Coral, Substack, YouTube, and native comment threads — not only news-desk pages — plus Reddit, Hacker News, Bluesky, Lemmy, and Stack Exchange. Conservative and right-leaning commenters get more of the floor. Mood on X is folded into the pulse — posts are never reprinted."
 			}),
 			/* @__PURE__ */ (0, import_jsx_runtime.jsx)("div", {
 				className: "mt-8",

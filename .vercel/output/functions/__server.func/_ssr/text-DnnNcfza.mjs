@@ -1,4 +1,4 @@
-//#region node_modules/.nitro/vite/services/ssr/assets/text-Kg3cA_n2.js
+//#region node_modules/.nitro/vite/services/ssr/assets/text-DnnNcfza.js
 var ENTITY_MAP = {
 	amp: "&",
 	lt: "<",
@@ -147,5 +147,24 @@ function searchTerms(question) {
 	const terms = [...new Set(words)].slice(0, 6).join(" ");
 	return terms.length >= 4 ? terms : question.trim();
 }
+function clipPhrase(value, maxWords = 8) {
+	return value.replace(/[?!]/g, " ").replace(/\s+/g, " ").trim().split(/\s+/).slice(0, maxWords).join(" ");
+}
+/** Unique short search phrases: keyword strip + intent expansions. */
+function searchVariants(question, searches) {
+	const out = [];
+	const seen = /* @__PURE__ */ new Set();
+	const add = (raw) => {
+		const phrase = clipPhrase(String(raw ?? ""));
+		if (phrase.length < 3) return;
+		const key = phrase.toLowerCase();
+		if (seen.has(key)) return;
+		seen.add(key);
+		out.push(phrase);
+	};
+	add(searchTerms(question));
+	for (const extra of searches ?? []) add(extra);
+	return out.slice(0, 3);
+}
 //#endregion
-export { searchTerms as a, isXOrigin as i, commentKey as n, isLowQuality as r, cleanText as t };
+export { searchTerms as a, isXOrigin as i, commentKey as n, searchVariants as o, isLowQuality as r, cleanText as t };

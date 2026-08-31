@@ -89,7 +89,7 @@ var HEADERS = { TSS_SHELL: "X-TSS_SHELL" };
 * the dev styles URL for route-scoped CSS collection.
 */
 async function getStartManifest(matchedRoutes) {
-	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-CMjWij4K.mjs");
+	const { tsrStartManifest } = await import("../_tanstack-start-manifest_v-BR0qdJTf.mjs");
 	const startManifest = tsrStartManifest();
 	let routes = startManifest.routes;
 	routes[rootRouteId];
@@ -111,11 +111,15 @@ async function getStartManifest(matchedRoutes) {
 var manifest = {
 	"48aa2c8a628103f79c09994c52094d826de08f12c030c48f41c332a6aa3d6ce7": {
 		functionName: "fetchChorusSource_createServerFn_handler",
-		importer: () => import("./search-OmNnwHAs.mjs")
+		importer: () => import("./search-DJx0BAqx.mjs")
 	},
 	"8c423ae0f6bf1894d035aa64dd04bb435fc9d193d3f27e6dba995ce1d7be678f": {
 		functionName: "composeChorusPulse_createServerFn_handler",
-		importer: () => import("./search-OmNnwHAs.mjs")
+		importer: () => import("./search-DJx0BAqx.mjs")
+	},
+	"a5b154c01fd71b911b01d52ace7faad853f4e5ed771afcd02b83349318c284d3": {
+		functionName: "expandChorusQuery_createServerFn_handler",
+		importer: () => import("./search-DJx0BAqx.mjs")
 	}
 };
 async function getServerFnById(id, access) {
@@ -1385,7 +1389,7 @@ var getBaseManifest = getProdBaseManifest;
 var createEarlyHintsForRequest = createEarlyHintsCollector;
 async function loadEntries() {
 	const [routerEntry, startEntry, pluginAdapters] = await Promise.all([
-		import("./router-CWzX9m0G.mjs").then((n) => n.t),
+		import("./router-BKSeS2vO.mjs").then((n) => n.t),
 		import("./start-5Z2QO8AU.mjs"),
 		import("./empty-plugin-adapters-D9UWiqvJ.mjs")
 	]);

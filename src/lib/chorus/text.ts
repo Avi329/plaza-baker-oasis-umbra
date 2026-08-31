@@ -174,3 +174,30 @@ export function searchTerms(question: string): string {
   const terms = unique.slice(0, 6).join(" ");
   return terms.length >= 4 ? terms : question.trim();
 }
+
+function clipPhrase(value: string, maxWords = 8): string {
+  return value
+    .replace(/[?!]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim()
+    .split(/\s+/)
+    .slice(0, maxWords)
+    .join(" ");
+}
+
+/** Unique short search phrases: keyword strip + intent expansions. */
+export function searchVariants(question: string, searches?: string[]): string[] {
+  const out: string[] = [];
+  const seen = new Set<string>();
+  const add = (raw?: string) => {
+    const phrase = clipPhrase(String(raw ?? ""));
+    if (phrase.length < 3) return;
+    const key = phrase.toLowerCase();
+    if (seen.has(key)) return;
+    seen.add(key);
+    out.push(phrase);
+  };
+  add(searchTerms(question));
+  for (const extra of searches ?? []) add(extra);
+  return out.slice(0, 3);
+}

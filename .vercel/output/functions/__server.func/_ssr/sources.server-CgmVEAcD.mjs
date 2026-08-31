@@ -1,5 +1,5 @@
-import { a as searchTerms, n as commentKey, r as isLowQuality, t as cleanText } from "./text-Kg3cA_n2.mjs";
-//#region node_modules/.nitro/vite/services/ssr/assets/sources.server-CxEt8t4w.js
+import { n as commentKey, o as searchVariants, r as isLowQuality, t as cleanText } from "./text-DnnNcfza.mjs";
+//#region node_modules/.nitro/vite/services/ssr/assets/sources.server-CgmVEAcD.js
 var TIMEOUT_MS = 1e4;
 var USER_AGENT = "Mozilla/5.0 (compatible; Chorus/1.0; comment-aggregator; +https://grok.com)";
 async function fetchJson(url, init, timeout = TIMEOUT_MS) {
@@ -50,7 +50,7 @@ function pack(comment) {
 	return packed;
 }
 async function fetchReddit(query) {
-	const endpoints = [`https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=relevance&t=year&limit=25&raw_json=1`, `https://old.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=comments&t=year&limit=25&raw_json=1`];
+	const endpoints = [`https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=relevance&t=year&limit=40&raw_json=1`, `https://old.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=comments&t=year&limit=40&raw_json=1`];
 	let lastError;
 	for (const url of endpoints) try {
 		const json = await fetchJson(url, { headers: { "User-Agent": "web:chorus:v1.0 (by /u/chorus-reader)" } });
@@ -74,7 +74,7 @@ async function fetchReddit(query) {
 				createdAt: Math.round((d.created_utc ?? 0) * 1e3)
 			});
 		}
-		if (comments.length) return sortByScore(uniq(comments)).slice(0, 20);
+		if (comments.length) return sortByScore(uniq(comments)).slice(0, 32);
 	} catch (err) {
 		lastError = err;
 	}
@@ -82,7 +82,7 @@ async function fetchReddit(query) {
 	return [];
 }
 async function fetchHn(query) {
-	const json = await fetchJson(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=comment&hitsPerPage=30`, void 0, 8e3);
+	const json = await fetchJson(`https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}&tags=comment&hitsPerPage=50`, void 0, 8e3);
 	const comments = [];
 	for (const hit of json.hits ?? []) {
 		const text = cleanText(hit.comment_text || "");
@@ -101,7 +101,7 @@ async function fetchHn(query) {
 			createdAt: (hit.created_at_i ?? 0) * 1e3
 		});
 	}
-	return sortByScore(uniq(comments)).slice(0, 20);
+	return sortByScore(uniq(comments)).slice(0, 32);
 }
 function bskyUrl(uri, handle) {
 	return `https://bsky.app/profile/${handle}/post/${uri.split("/").pop() ?? ""}`;
@@ -125,10 +125,10 @@ async function fetchBluesky(query) {
 			createdAt: post.indexedAt ? Date.parse(post.indexedAt) : 0
 		});
 	}
-	return sortByScore(uniq(comments)).slice(0, 18);
+	return sortByScore(uniq(comments)).slice(0, 24);
 }
 async function fetchLemmyInstance(host, query) {
-	const json = await fetchJson(`https://${host}/api/v3/search?q=${encodeURIComponent(query)}&type_=Comments&sort=TopAll&listing_type=All&limit=20`, void 0, 12e3);
+	const json = await fetchJson(`https://${host}/api/v3/search?q=${encodeURIComponent(query)}&type_=Comments&sort=TopAll&listing_type=All&limit=30`, void 0, 12e3);
 	const comments = [];
 	for (const row of json.comments ?? []) {
 		const text = cleanText(row.comment?.content || "");
@@ -155,7 +155,7 @@ async function fetchLemmy(query) {
 	let lastError;
 	for (const result of batches) if (result.status === "fulfilled") comments.push(...result.value);
 	else lastError = result.reason;
-	const unique = sortByScore(uniq(comments)).slice(0, 20);
+	const unique = sortByScore(uniq(comments)).slice(0, 28);
 	if (!unique.length && lastError) throw lastError;
 	return unique;
 }
@@ -207,7 +207,7 @@ async function fetchStack(query) {
 	let lastError;
 	for (const result of batches) if (result.status === "fulfilled") comments.push(...result.value);
 	else lastError = result.reason;
-	const unique = sortByScore(uniq(comments)).slice(0, 18);
+	const unique = sortByScore(uniq(comments)).slice(0, 28);
 	if (!unique.length && lastError) throw lastError;
 	return unique;
 }
@@ -218,13 +218,24 @@ var FETCHERS = {
 	lemmy: fetchLemmy,
 	stack: fetchStack
 };
-async function fetchSource(source, query) {
+async function fetchSource(source, query, intent) {
 	try {
 		let comments;
 		if (source === "news") {
-			const { fetchNewsComments } = await import("./news.server-lCt9Yb-y.mjs");
-			comments = (await fetchNewsComments(query)).map(pack);
-		} else comments = (await FETCHERS[source](searchTerms(query))).map(pack);
+			const { fetchNewsComments } = await import("./news.server-BQr0o-zj.mjs");
+			comments = (await fetchNewsComments(query, intent)).map(pack);
+		} else {
+			const variants = searchVariants(query, intent?.searches);
+			const cap = source === "reddit" || source === "lemmy" ? 2 : 3;
+			const chosen = variants.slice(0, cap);
+			const batches = await Promise.allSettled(chosen.map((phrase) => FETCHERS[source](phrase)));
+			const merged = [];
+			let lastError;
+			for (const result of batches) if (result.status === "fulfilled") merged.push(...result.value);
+			else lastError = result.reason;
+			comments = sortByScore(uniq(merged)).slice(0, 40).map(pack);
+			if (!comments.length && lastError) throw lastError;
+		}
 		return {
 			source,
 			comments,

@@ -1,4 +1,4 @@
-//#region node_modules/.nitro/vite/services/ssr/assets/types-DmYKfL1D.js
+//#region node_modules/.nitro/vite/services/ssr/assets/types-DFkWyPLH.js
 var DIRECT_SOURCES = [
 	"reddit",
 	"hn",
@@ -37,8 +37,8 @@ var SOURCE_META = {
 		short: "Quora"
 	},
 	news: {
-		label: "News comments",
-		short: "News"
+		label: "Disqus / OpenWeb",
+		short: "Disqus"
 	},
 	youtube: {
 		label: "YouTube",
@@ -54,7 +54,7 @@ var SOURCE_META = {
 	}
 };
 var EXAMPLE_QUESTIONS = [
-	"Is remote work actually dying?",
+	"is wfh over?",
 	"What do people think of the latest AI models?",
 	"Is college still worth it?",
 	"Should humans colonize Mars?",

@@ -31,11 +31,18 @@ export type ChorusComment = {
   createdAt: number;
 };
 
+export type QueryIntent = {
+  topic: string;
+  searches: string[];
+  related: string[];
+};
+
 export type SourcePayload = {
   source: DirectSource;
   comments: ChorusComment[];
   error?: string;
 };
+
 
 export type PulseCamp = {
   label: string;
@@ -63,14 +70,14 @@ export const SOURCE_META: Record<
   stack: { label: "Stack Exchange", short: "Stack" },
   x: { label: "X", short: "X" },
   quora: { label: "Quora", short: "Quora" },
-  news: { label: "News comments", short: "News" },
+  news: { label: "Disqus / OpenWeb", short: "Disqus" },
   youtube: { label: "YouTube", short: "YouTube" },
   facebook: { label: "Facebook", short: "Facebook" },
   web: { label: "Open web", short: "Web" },
 };
 
 export const EXAMPLE_QUESTIONS = [
-  "Is remote work actually dying?",
+  "is wfh over?",
   "What do people think of the latest AI models?",
   "Is college still worth it?",
   "Should humans colonize Mars?",

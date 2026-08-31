@@ -42,25 +42,27 @@ export async function grokComplete(opts: {
   const apiKey = process.env.XAI_API_KEY;
   if (!apiKey) throw new Error("AI is not available in this environment");
 
+  const body: Record<string, unknown> = {
+    model: "grok-4.5",
+    store: false,
+    max_output_tokens: opts.maxOutputTokens ?? 1600,
+    reasoning: { effort: "low" },
+    input: [
+      { role: "system", content: opts.system },
+      { role: "user", content: opts.prompt },
+    ],
+  };
+  if (opts.tools && opts.tools.length > 0) body.tools = opts.tools;
+
   const res = await fetch("https://api.x.ai/v1/responses", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKey}`,
-    },
-    body: JSON.stringify({
-      model: "grok-4.5",
-      store: false,
-      max_output_tokens: opts.maxOutputTokens ?? 1600,
-      reasoning: { effort: "low" },
-      tools: opts.tools ?? [{ type: "web_search" }],
-      input: [
-        { role: "system", content: opts.system },
-        { role: "user", content: opts.prompt },
-      ],
-    }),
-    signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
-  });
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${apiKey}`,
+      },
+      body: JSON.stringify(body),
+      signal: AbortSignal.timeout(opts.timeoutMs ?? 90_000),
+    });
 
   if (!res.ok) {
     const detail = await res.text().catch(() => "");

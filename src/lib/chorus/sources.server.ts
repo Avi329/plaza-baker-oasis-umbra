@@ -1,9 +1,10 @@
 import {
   type ChorusComment,
   type DirectSource,
+  type QueryIntent,
   type SourcePayload,
 } from "./types";
-import { cleanText, commentKey, isLowQuality, searchTerms } from "./text";
+import { cleanText, commentKey, isLowQuality, searchVariants } from "./text";
 
 const TIMEOUT_MS = 10000;
 const USER_AGENT =
@@ -85,8 +86,8 @@ type RedditListing = {
 
 async function fetchReddit(query: string): Promise<ChorusComment[]> {
   const endpoints = [
-    `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=relevance&t=year&limit=25&raw_json=1`,
-    `https://old.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=comments&t=year&limit=25&raw_json=1`,
+    `https://www.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=relevance&t=year&limit=40&raw_json=1`,
+    `https://old.reddit.com/search.json?q=${encodeURIComponent(query)}&type=comment&sort=comments&t=year&limit=40&raw_json=1`,
   ];
   let lastError: unknown;
   for (const url of endpoints) {
@@ -116,7 +117,7 @@ async function fetchReddit(query: string): Promise<ChorusComment[]> {
           createdAt: Math.round((d.created_utc ?? 0) * 1000),
         });
       }
-      if (comments.length) return sortByScore(uniq(comments)).slice(0, 20);
+      if (comments.length) return sortByScore(uniq(comments)).slice(0, 32);
     } catch (err) {
       lastError = err;
     }
@@ -140,7 +141,7 @@ type HnSearch = { hits?: HnHit[] };
 async function fetchHn(query: string): Promise<ChorusComment[]> {
   const url =
     `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(query)}` +
-    `&tags=comment&hitsPerPage=30`;
+    `&tags=comment&hitsPerPage=50`;
   const json = await fetchJson<HnSearch>(url, undefined, 8000);
   const comments: ChorusComment[] = [];
   for (const hit of json.hits ?? []) {
@@ -160,7 +161,7 @@ async function fetchHn(query: string): Promise<ChorusComment[]> {
       createdAt: (hit.created_at_i ?? 0) * 1000,
     });
   }
-  return sortByScore(uniq(comments)).slice(0, 20);
+  return sortByScore(uniq(comments)).slice(0, 32);
 }
 
 type BskyPost = {
@@ -200,7 +201,7 @@ async function fetchBluesky(query: string): Promise<ChorusComment[]> {
       createdAt: post.indexedAt ? Date.parse(post.indexedAt) : 0,
     });
   }
-  return sortByScore(uniq(comments)).slice(0, 18);
+  return sortByScore(uniq(comments)).slice(0, 24);
 }
 
 type LemmyCommentView = {
@@ -221,7 +222,7 @@ type LemmySearch = { comments?: LemmyCommentView[] };
 async function fetchLemmyInstance(host: string, query: string): Promise<ChorusComment[]> {
   const url =
     `https://${host}/api/v3/search?q=${encodeURIComponent(query)}` +
-    `&type_=Comments&sort=TopAll&listing_type=All&limit=20`;
+    `&type_=Comments&sort=TopAll&listing_type=All&limit=30`;
   const json = await fetchJson<LemmySearch>(url, undefined, 12000);
   const comments: ChorusComment[] = [];
   for (const row of json.comments ?? []) {
@@ -255,7 +256,7 @@ async function fetchLemmy(query: string): Promise<ChorusComment[]> {
     if (result.status === "fulfilled") comments.push(...result.value);
     else lastError = result.reason;
   }
-  const unique = sortByScore(uniq(comments)).slice(0, 20);
+  const unique = sortByScore(uniq(comments)).slice(0, 28);
   if (!unique.length && lastError) throw lastError;
   return unique;
 }
@@ -320,7 +321,7 @@ async function fetchStack(query: string): Promise<ChorusComment[]> {
     if (result.status === "fulfilled") comments.push(...result.value);
     else lastError = result.reason;
   }
-  const unique = sortByScore(uniq(comments)).slice(0, 18);
+  const unique = sortByScore(uniq(comments)).slice(0, 28);
   if (!unique.length && lastError) throw lastError;
   return unique;
 }
@@ -333,14 +334,29 @@ const FETCHERS: Record<Exclude<DirectSource, "news">, (q: string) => Promise<Cho
   stack: fetchStack,
 };
 
-export async function fetchSource(source: DirectSource, query: string): Promise<SourcePayload> {
+export async function fetchSource(
+  source: DirectSource,
+  query: string,
+  intent?: QueryIntent,
+): Promise<SourcePayload> {
   try {
     let comments: ChorusComment[];
     if (source === "news") {
       const { fetchNewsComments } = await import("./news.server");
-      comments = (await fetchNewsComments(query)).map(pack);
+      comments = (await fetchNewsComments(query, intent)).map(pack);
     } else {
-      comments = (await FETCHERS[source](searchTerms(query))).map(pack);
+      const variants = searchVariants(query, intent?.searches);
+      const cap = source === "reddit" || source === "lemmy" ? 2 : 3;
+      const chosen = variants.slice(0, cap);
+      const batches = await Promise.allSettled(chosen.map((phrase) => FETCHERS[source](phrase)));
+      const merged: ChorusComment[] = [];
+      let lastError: unknown;
+      for (const result of batches) {
+        if (result.status === "fulfilled") merged.push(...result.value);
+        else lastError = result.reason;
+      }
+      comments = sortByScore(uniq(merged)).slice(0, 40).map(pack);
+      if (!comments.length && lastError) throw lastError;
     }
     return {
       source,

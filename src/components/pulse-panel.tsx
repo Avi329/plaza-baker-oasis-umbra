@@ -17,7 +17,7 @@ export function PulsePanel({
         <Skeleton className="mt-2 h-4 w-11/12 bg-elevated" />
         <Skeleton className="mt-2 h-4 w-3/4 bg-elevated" />
         <p className="mt-5 text-sm text-muted">
-          Reading news-desk comment threads, Substack, and the open web…
+          Reading Disqus, OpenWeb, and other comment threads on this subject…
         </p>
       </section>
     );
