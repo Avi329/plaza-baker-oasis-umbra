@@ -1,0 +1,1 @@
+ Chorus reads the internet and picks reader comments on that subject from Disqus, OpenWeb, Viafoura, Coral, Substack, YouTube, and native comment threads — not only news-desk pages — plus Reddit, Hacker News, Bluesky, Lemmy, and Stack Exchange. Conservative and right-leaning commenters get more of the floor. Mood on X is folded into the pulse — posts are never reprinted.
